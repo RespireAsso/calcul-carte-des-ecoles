@@ -70,11 +70,35 @@ sub color2value_pm25 {
 
 use JSON;
 
-my $no2_2018_layer_name = 'mod_idf_no2_2018_moyenne_annuelle';
-my $no2_2017_layer_name = 'mod_idf_no2_2017_2';
+my @layer_names = qw(
+MOD_IDF_NO2_2012_Bilan_annuel
+MOD_IDF_NO2_2013_Bilan_annuel
+MOD_IDF_NO2_2014_Bilan_annuel
+MOD_IDF_NO2_2015_Bilan_annuel
+MOD_IDF_NO2_2016_Bilan_annuel
+mod_idf_no2_2017_2
+mod_idf_no2_2018_moyenne_annuelle
+MOD_IDF_PM10_2012_Bilan_annuel
+MOD_IDF_PM10_2013_Bilan_annuel
+MOD_IDF_PM10_2014_Bilan_annuel
+MOD_IDF_PM10_2015_Bilan_annuel
+mod_idf_pm10_2016_moyenne_annuelle
+mod_idf_pm10_2017_moyenne_annuelle
+mod_idf_pm10_2018_moyenne_annuelle
+mod_idf_pm25_2012_moyenne_annuelle
+mod_idf_pm25_2013_moyenne_annuelle
+mod_idf_pm25_2014_moyenne_annuelle
+mod_idf_pm25_2015_moyenne_annuelle
+mod_idf_pm25_2016_moyenne_annuelle
+mod_idf_pm25_2018_moyenne_annuelle
+); # __PM25_2017 n'a pas le zoom level 16
 
-my $pm10_2018_layer_name = 'mod_idf_pm10_2018_moyenne_annuelle';
-my $pm25_2018_layer_name = 'mod_idf_pm25_2018_moyenne_annuelle';
+sub layer_name {
+    my ($annee, $polluant) = @_;
+    my @l = grep { /${polluant}_${annee}/i } @layer_names;
+    @l == 1 or warn("no layer_name for $annee $polluant");
+    $l[0]
+}
 
 sub to_base_url_and_file {
     my ($layer_name) = @_;
@@ -83,6 +107,7 @@ sub to_base_url_and_file {
 
 sub get_value {
     my ($layer_name, @coords) = @_;
+    $layer_name or return undef;
     my ($tile_file, $delta_x, $delta_y) = getTileFile(to_base_url_and_file($layer_name), @coords);
     #print join(' ', $tile_file, $delta_x, $delta_y), "\n";
 
@@ -104,21 +129,22 @@ sub update_data {
     my $i = 0;
     foreach my $e (@$all_data) {
 
-	if (1) {
-        $e->{d}{2018} = {
-            no2 => round(get_value($no2_2018_layer_name, $e->{x}, $e->{y})),
-            pm10 => round(get_value($pm10_2018_layer_name, $e->{x}, $e->{y})),
-            pm25 => round(get_value($pm25_2018_layer_name, $e->{x}, $e->{y})),
-        };
-
-        } else {
-            my $no2_2017 = get_value($no2_2017_layer_name, $e->{x}, $e->{y});
+	  if (1) {
+        foreach my $annee ('2012', '2013', '2014', '2015', '2016', '2017', '2018') {
+            $e->{d}{$annee} = {
+                no2 => round(get_value(layer_name($annee, 'no2'), $e->{x}, $e->{y})),
+                pm10 => round(get_value(layer_name($annee, 'pm10'), $e->{x}, $e->{y})),
+                pm25 => round(get_value(layer_name($annee, 'pm25'), $e->{x}, $e->{y})),
+            };
+        }
+      } else {
+            my $no2_2017 = get_value(layer_name('2017', 'no2'), $e->{x}, $e->{y});
             my $expected_no_2017 = $e->{d}{2017}{no2};
             if (abs($no2_2017 - $expected_no_2017) > 4) {
                 print "expected: $expected_no_2017 computed: $no2_2017 ($e->{label})\n";
             }
-        }
-        #last if $i++ > 1000;
+      }
+      #last if $i++ > 1000;
     }
     print JSON::encode_json($all_data);
 }

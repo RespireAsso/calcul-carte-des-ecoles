@@ -15,13 +15,12 @@ sub round {
     $_[0] && int($_[0] + 0.5)
 }
 sub getTileFile {
-    my ($base_url, $base_file, $lat, $lon) = @_;
-    my $zoom = 16;
+    my ($base_url, $base_file, $zoom, $lat, $lon) = @_;
     my ($xtile_, $ytile_) = getTileNumber($lat, $lon, $zoom);
     my $xtile = int($xtile_);
     my $ytile = int($ytile_);
     #print "$xtile_, $ytile_\n";
-    my $file = "$base_file-$ytile-$xtile.jpg";
+    my $file = "cache/$base_file-$ytile-$xtile.jpg";
     if (! -f $file) {
         my $url = "$base_url/$zoom/$ytile/$xtile";
         warn "getting $url\n";
@@ -70,45 +69,48 @@ sub color2value_pm25 {
 
 use JSON;
 
-my @layer_names = qw(
-MOD_IDF_NO2_2012_Bilan_annuel
-MOD_IDF_NO2_2013_Bilan_annuel
-MOD_IDF_NO2_2014_Bilan_annuel
-MOD_IDF_NO2_2015_Bilan_annuel
-MOD_IDF_NO2_2016_Bilan_annuel
-mod_idf_no2_2017_2
-mod_idf_no2_2018_moyenne_annuelle
-MOD_IDF_PM10_2012_Bilan_annuel
-MOD_IDF_PM10_2013_Bilan_annuel
-MOD_IDF_PM10_2014_Bilan_annuel
-MOD_IDF_PM10_2015_Bilan_annuel
-mod_idf_pm10_2016_moyenne_annuelle
-mod_idf_pm10_2017_moyenne_annuelle
-mod_idf_pm10_2018_moyenne_annuelle
-mod_idf_pm25_2012_moyenne_annuelle
-mod_idf_pm25_2013_moyenne_annuelle
-mod_idf_pm25_2014_moyenne_annuelle
-mod_idf_pm25_2015_moyenne_annuelle
-mod_idf_pm25_2016_moyenne_annuelle
-mod_idf_pm25_2018_moyenne_annuelle
+my %layer2zoom = (
+  MOD_IDF_NO2_2012_Bilan_annuel => 16,
+  MOD_IDF_NO2_2013_Bilan_annuel => 16,
+  MOD_IDF_NO2_2014_Bilan_annuel => 16,
+  MOD_IDF_NO2_2015_Bilan_annuel => 16,
+  MOD_IDF_NO2_2016_Bilan_annuel => 16,
+  mod_idf_no2_2017_2 => 16,
+  mod_idf_no2_2018_moyenne_annuelle => 16,
+  mod_idf_no2_2019_moyenne_annuelle => 15,
+  MOD_IDF_PM10_2012_Bilan_annuel => 16,
+  MOD_IDF_PM10_2013_Bilan_annuel => 16,
+  MOD_IDF_PM10_2014_Bilan_annuel => 16,
+  MOD_IDF_PM10_2015_Bilan_annuel => 16,
+  mod_idf_pm10_2016_moyenne_annuelle => 16,
+  mod_idf_pm10_2017_moyenne_annuelle => 16,
+  mod_idf_pm10_2018_moyenne_annuelle => 16,
+  mod_idf_pm10_2019_moyenne_annuelle => 14,
+  mod_idf_pm25_2012_moyenne_annuelle => 16,
+  mod_idf_pm25_2013_moyenne_annuelle => 16,
+  mod_idf_pm25_2014_moyenne_annuelle => 16,
+  mod_idf_pm25_2015_moyenne_annuelle => 16,
+  mod_idf_pm25_2016_moyenne_annuelle => 16,
+  mod_idf_pm25_2018_moyenne_annuelle => 16,
+  mod_idf_pm25_2019_moyenne_annuelle => 15,
 ); # __PM25_2017 n'a pas le zoom level 16
 
 sub layer_name {
     my ($annee, $polluant) = @_;
-    my @l = grep { /${polluant}_${annee}/i } @layer_names;
+    my @l = grep { /${polluant}_${annee}/i } keys %layer2zoom;
     @l == 1 or warn("no layer_name for $annee $polluant");
     $l[0]
 }
 
-sub to_base_url_and_file {
+sub to_base_url_and_file_and_zoom {
     my ($layer_name) = @_;
-    ("https://tiles.arcgis.com/tiles/gtmasQsdfwbDAQSQ/arcgis/rest/services/$layer_name/MapServer/tile", $layer_name);
+    ("https://tiles.arcgis.com/tiles/gtmasQsdfwbDAQSQ/arcgis/rest/services/$layer_name/MapServer/tile", $layer_name, $layer2zoom{$layer_name});
 }
 
 sub get_value {
     my ($layer_name, @coords) = @_;
     $layer_name or return undef;
-    my ($tile_file, $delta_x, $delta_y) = getTileFile(to_base_url_and_file($layer_name), @coords);
+    my ($tile_file, $delta_x, $delta_y) = getTileFile(to_base_url_and_file_and_zoom($layer_name), @coords);
     #print join(' ', $tile_file, $delta_x, $delta_y), "\n";
 
     if (-z $tile_file) {
@@ -130,7 +132,7 @@ sub update_data {
     foreach my $e (@$all_data) {
 
 	  if (1) {
-        foreach my $annee ('2012', '2013', '2014', '2015', '2016', '2017', '2018') {
+        foreach my $annee ('2012', '2013', '2014', '2015', '2016', '2017', '2018', '2019') {
             $e->{d}{$annee} = {
                 no2 => round(get_value(layer_name($annee, 'no2'), $e->{x}, $e->{y})),
                 pm10 => round(get_value(layer_name($annee, 'pm10'), $e->{x}, $e->{y})),

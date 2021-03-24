@@ -1,0 +1,7 @@
+aura/*.tif
+hdf/*.tif
+fr-en-adresse-et-geolocalisation-etablissements-premier-et-second-degre.json
+EAJE2017.geojson
+cache/
+node_modules/
+package-lock.json

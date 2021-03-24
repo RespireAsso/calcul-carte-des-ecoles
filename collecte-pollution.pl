@@ -127,7 +127,8 @@ sub get_value {
 }
 
 sub update_data {
-    my ($all_data) = JSON::decode_json(`cat data.json`);
+    my ($input_data_file) = @_;
+    my ($all_data) = JSON::decode_json(join('', `cat $input_data_file`));
     my $i = 0;
     foreach my $e (@$all_data) {
 
@@ -148,6 +149,7 @@ sub update_data {
       }
       #last if $i++ > 1000;
     }
+    #@$all_data = grep { $_->{d}{2018}{no2} } @$all_data;
     print JSON::encode_json($all_data);
 }
 
@@ -209,7 +211,7 @@ EOS
     }
 }
 
-update_data();
+update_data($ARGV[0]);
 
 
 use Data::Dumper;
